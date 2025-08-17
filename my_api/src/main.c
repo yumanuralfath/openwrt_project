@@ -16,13 +16,7 @@
 
 static int server_fd = -1;
 
-const char *http_response = "HTTP/1.1 200 OK\r\n"
-                            "Content-Type: application/json\r\n"
-                            "Access-Control-Allow-Origin: *\r\n"
-                            "Connection: close\r\n"
-                            "Content-Length: 50\r\n"
-                            "\r\n"
-                            "{\"message\": \"Hello from OPENWRT MR3020 V3\"}";
+// We'll build the response dynamically to ensure correct Content-Length
 
 void signal_handler(int sig) {
   (void)sig;
@@ -101,13 +95,31 @@ int main() {
       buffer[bytes_read] = '\0';
       printf("Received request: %.100s...\n", buffer);
 
+      // Prepare JSON response
+      const char *json_content =
+          "{\"message\": \"Hello from OPENWRT MR3020 V3\"}";
+      char http_response[512];
+      int content_length = strlen(json_content);
+
+      // Build HTTP response with correct Content-Length
+      snprintf(http_response, sizeof(http_response),
+               "HTTP/1.1 200 OK\r\n"
+               "Content-Type: application/json\r\n"
+               "Access-Control-Allow-Origin: *\r\n"
+               "Connection: close\r\n"
+               "Content-Length: %d\r\n"
+               "\r\n"
+               "%s",
+               content_length, json_content);
+
       // Send response
       ssize_t bytes_sent =
           send(new_socket, http_response, strlen(http_response), 0);
       if (bytes_sent < 0) {
         perror("send failed");
       } else {
-        printf("Response sent (%zd bytes)\n", bytes_sent);
+        printf("Response sent (%zd bytes, content: %d bytes)\n", bytes_sent,
+               content_length);
       }
     }
 
