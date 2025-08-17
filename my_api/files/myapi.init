@@ -8,19 +8,38 @@ USE_PROCD=1
 PROG=/usr/bin/myapi
 
 start_service() {
-    procd_open_instance
-    procd_set_param command "$PROG"
-    procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
-    procd_set_param stdout 1
-    procd_set_param stderr 1
-    procd_close_instance
+  # Check if port is already in use
+  if netstat -ln | grep -q ":2007 "; then
+    echo "Port 2007 is already in use"
+    return 1
+  fi
+
+  procd_open_instance
+  procd_set_param command "$PROG"
+  procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-10} ${respawn_retry:-3}
+  procd_set_param stdout 1
+  procd_set_param stderr 1
+  procd_set_param user root
+  procd_close_instance
+
+  echo "myapi service started"
 }
 
 stop_service() {
-    killall myapi 2>/dev/null
+  echo "Stopping myapi service..."
+  killall myapi 2>/dev/null
+  sleep 2
+  # Force kill if still running
+  killall -9 myapi 2>/dev/null
+  echo "myapi service stopped"
+}
+
+restart() {
+  stop
+  sleep 3
+  start
 }
 
 reload_service() {
-    stop
-    start
+  restart
 }
